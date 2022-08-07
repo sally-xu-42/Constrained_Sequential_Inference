@@ -24,7 +24,9 @@ class Transformer:
                 unnormalized_residuals[(a, p)] += old_residual * w
 
         for a, ps in symbol2arcs.items():
-            normalizer = sum([unnormalized_residuals[(a, p)] for p in ps], start=fsa.R.zero)
+            normalizer = fsa.R.zero
+            for p in ps:
+                normalizer += unnormalized_residuals[(a, p)]
             residuals = {p : ~normalizer * unnormalized_residuals[(a, p)] for p in ps}
 
             yield a, PowerState(residuals), normalizer

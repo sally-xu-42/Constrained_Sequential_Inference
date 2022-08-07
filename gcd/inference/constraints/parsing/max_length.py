@@ -2,7 +2,7 @@ import torch
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from typing import Dict
 
-from rayuela.fsa.fsa import FSA, State
+from rayuela.fsa.fsa import FSA, DFSA, State
 from gcd.inference.constraints import Constraint
 from gcd.inference.constraints.parsing import util
 
@@ -14,7 +14,7 @@ class MaxLengthConstraint(Constraint):
 
     def build(self,
               input_tokens: torch.Tensor,
-              token_to_key: Dict[str, int], *args, **kwargs) -> FSA:
+              token_to_key: Dict[str, int], *args, **kwargs) -> DFSA:
         fsa = FSA()
 
         states = [State(i) for i in range(self.max_length + 3)]
@@ -39,8 +39,7 @@ class MaxLengthConstraint(Constraint):
             fsa.add_arc(state, END_SYMBOL, states[-1])
 
         # Finalize
-        fsa.compile()
-        return fsa
+        return fsa.compile()
 
     def get_name(self) -> str:
         return f'max-length-{self.max_length}'

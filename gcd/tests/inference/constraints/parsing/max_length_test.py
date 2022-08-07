@@ -24,4 +24,6 @@ class TestMaxLengthConstraint(unittest.TestCase):
 
         assert not automaton.accept([start, nt, close, nt, close, close, nt, end])
         assert not automaton.accept([start, nt, xx, nt, xx, close, close, xx, end])
-        
+
+
+TestMaxLengthConstraint().test_max_length_constraint()

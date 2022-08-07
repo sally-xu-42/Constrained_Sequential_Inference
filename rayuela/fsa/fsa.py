@@ -12,7 +12,9 @@ from rayuela.base.misc import epsilon_filter
 from rayuela.base.symbol import Sym, ε, ε_1, ε_2
 
 from rayuela.fsa.state import State, PairState, PowerState, MinimizeState
+from rayuela.fsa.dfsa import DFSA
 from rayuela.fsa.pathsum import Pathsum, Strategy
+from rayuela.fsa.transformer import Transformer
 
 class FSA:
 
@@ -53,18 +55,14 @@ class FSA:
 		# final weight function
 		self.ρ = R.chart()
 
-		self._compiled = False
-
 	def add_state(self, q):
 		if not isinstance(q, State):
 			q = State(q)
 		self.Q.add(q)
-		self._compiled = False
 
 	def add_states(self, Q):
 		for q in Q:
 			self.add_state(q)
-		self._compiled = False
 
 	def add_arc(self, i, a, j, w=None):
 		if w is None: w = self.R.one
@@ -75,35 +73,29 @@ class FSA:
 		self.add_states([i, j])
 		self.Sigma.add(a)
 		self.δ[i][a][j] += w
-		self._compiled = False
 
 	def set_arc(self, i, a, j, w):
 		self.add_states([i, j])
 		self.Sigma.add(a)
 		self.δ[i][a][j] = w
-		self._compiled = False
 
 	def set_I(self, q, w=None):
 		if w is None: w = self.R.one
 		self.add_state(q)
 		self.λ[q] = w
-		self._compiled = False
 
 	def set_F(self, q, w=None):
 		if w is None: w = self.R.one
 		self.add_state(q)
 		self.ρ[q] = w
-		self._compiled = False
 
 	def add_I(self, q, w):
 		self.add_state(q)
 		self.λ[q] += w
-		self._compiled = False
 
 	def add_F(self, q, w):
 		self.add_state(q)
 		self.ρ[q] += w
-		self._compiled = False
 
 	def freeze(self):
 		self.Sigma = frozenset(self.Sigma)
@@ -133,9 +125,8 @@ class FSA:
 					continue
 				yield a, j, w
 
-	def accept(self, tokens):
+	def accept(self, tokens) -> bool:
 		""" determines whether a string is in the language """
-		# TODO: if compiled, use faster algorithm 
 		assert isinstance(tokens, list)
 
 		fsa = FSA(R=self.R)
@@ -177,56 +168,32 @@ class FSA:
 
 	def determinize(self) -> FSA:
 		# Homework 4: Question 4
-		# initialize a new WFSA over the same semiring
-		dfsa = FSA(self.R)
-		# initialize Q_I
-		power_Q_I = PowerState({q: w for q, w in self.I})
-		dfsa.add_I(power_Q_I, self.R.one)
+		det = self.spawn()
+		QI = PowerState(dict(self.I))
+		det.set_I(QI)
+		stack = [QI]
 
-		stack = [power_Q_I]
-		while stack:
-			power_Q = stack.pop()
-			arcs_Q = set((q, a, j, w) for q in self.Q_map(power_Q) for a, j, w in self.arcs(q))
-			# symbols = set([a for _, a, _, _ in arcs_Q])
-			symbols = set(a for _, a, _, _ in arcs_Q)
+		while len(stack) > 0:
+			Q = stack.pop()
+			for a, QP, wp in Transformer._powerarcs(self, Q):
+				# New power state:
+				is_new_state = QP not in det.Q
+				if self.R is Boolean:  # unweighted case
+					det.add_arc(Q, a, QP)
+					if is_new_state:  # final?
+						det.ρ[QP] = Boolean(any(self.ρ[q].score for q in QP.residuals.keys()))
+						stack.append(QP)
+				else:
+					det.add_arc(Q, a, QP, wp)
+					if is_new_state:  # final?
+						s = self.R.zero
+						for q, rq in QP.residuals.items():
+							s += rq * self.ρ[q]
+						det.ρ[QP] = s
+						stack.append(QP)
 
-			for a in symbols:
-				# calculate the weight of the new a-outgoing transition
-				w_prime = self.R.zero
-				for p, resi_p in power_Q.residuals.items():
-					for sym, _, w in self.arcs(p):
-						if sym != a: continue
-						w_prime += resi_p * w
-
-				# initialize the dictionary to store residual weights for elementary q
-				power_prime_Q_resi = dfsa.R.chart()
-				for p, resi_p in power_Q.residuals.items():
-					for sym, q, w in self.arcs(p):
-						if sym != a: continue
-						power_prime_Q_resi[q] += (~w_prime) * resi_p * w
-				# construct new power state
-				power_prime_Q = PowerState(power_prime_Q_resi)
-
-				is_new = power_prime_Q not in dfsa.Q
-				dfsa.set_arc(power_Q, a, power_prime_Q, w_prime)
-
-				if is_new:
-					# check if there's one with nonzero rho, i.e. there's a final state in Q_cal_p
-					final_exists = False
-					for q in self.Q_map(power_prime_Q):
-						if self.ρ[q] != self.R.zero:
-							final_exists = True
-					
-					if final_exists:
-						ρ_new = self.R.zero
-						for q, resi_q in power_prime_Q.residuals.items():
-							ρ_new += resi_q * self.ρ[q]
-						dfsa.set_F(power_prime_Q, ρ_new)
-
-					# push the new power state to stack
-					stack.append(power_prime_Q)
-		
-		return dfsa
+		assert(det.deterministic)
+		return det
 
 	def minimize(self, strategy=None) -> FSA:
 		# Homework 5: Question 3
@@ -274,21 +241,9 @@ class FSA:
 			mfsa.add_F(MinimizeState(μ[q]), w)
 		return mfsa
 
-	def compile(self) -> FSA:
-		if self._compiled: return
-		
+	def compile(self) -> DFSA:
 		fsa = self.determinize().minimize()
-		self.Q = fsa.Q
-		
-		for q in fsa.Q:
-			self.λ[q] = fsa.λ[q]
-			self.ρ[q] = fsa.ρ[q]
-		
-		for i in fsa.Q:
-			for a, j, w in fsa.arcs(i):
-				self.δ[i][a][j] = w
-		
-		self._compiled = True
+		return DFSA(fsa)
 
 	def dfs(self):
 		""" Depth-first search (Cormen et al. 2019; Section 22.3) """
@@ -348,9 +303,12 @@ class FSA:
 
 	@property
 	def deterministic(self) -> bool:
-
 		# Homework 1: Question 2
-		raise NotImplementedError
+		for i in self.Q:
+			for a, map in self.δ[i].items():
+				if sum(1 for j, w in map.items() if w != self.R.zero) >= 2:
+					return False
+		return True
 
 	@property
 	def pushed(self) -> bool:

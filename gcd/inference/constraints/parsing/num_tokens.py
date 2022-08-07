@@ -2,7 +2,7 @@ import torch
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from typing import Dict
 
-from rayuela.fsa.fsa import FSA, State
+from rayuela.fsa.fsa import FSA, DFSA, State
 from gcd.inference.constraints import Constraint
 from gcd.inference.constraints.parsing import util
 
@@ -11,7 +11,7 @@ from gcd.inference.constraints.parsing import util
 class NumTokensConstraint(Constraint):
     def build(self,
               input_tokens: torch.Tensor,
-              token_to_key: Dict[str, int], *args, **kwargs) -> FSA:
+              token_to_key: Dict[str, int], *args, **kwargs) -> DFSA:
         batch_size, num_tokens = input_tokens.size()
         assert batch_size == 1, batch_size
         num_tokens -= 2  # <bos>, <eos>
@@ -51,8 +51,7 @@ class NumTokensConstraint(Constraint):
                     fsa.add_arc(state1, token, state2)
 
         # Finalize
-        fsa.compile()
-        return fsa
+        return fsa.compile()
 
     def get_name(self) -> str:
         return 'num-tokens'
