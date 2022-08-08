@@ -43,7 +43,7 @@ local use_constraints = false;
       "constraints": [
         {"type": "num-tokens"},
         {"type": "non-empty-phrase"},
-        {"type": "balanced-parens", "max_length": 200}
+        // {"type": "balanced-parens", "max_length": 200}
       ]
     },
     "num_layers": 1,

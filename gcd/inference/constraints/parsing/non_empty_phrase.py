@@ -20,38 +20,38 @@ class NonEmptyPhraseConstraint(Constraint):
 
         # To write this automaton, we will first write an automaton
         # to match emtpy phrases and then negate it
-        s0 = State(0)
-        s1 = State(1)
-        s2 = State(2)
-        s3 = State(3)
+        states = [State(i) for i in range(4)]
+        fsa.add_states(states)
+        s0, s1, s2, s3 = states
 
         # Set the start and final states
         fsa.set_I(s0)
         fsa.set_F(s3)
 
         # Set the transitions from and to the start and final
-        fsa.add_arc(s0, START_SYMBOL, s1)
-        fsa.add_arc(s1, END_SYMBOL, s3)
-        fsa.add_arc(s2, END_SYMBOL, s3)
+        start, end = token_to_key[START_SYMBOL], token_to_key[END_SYMBOL]
+        fsa.add_arc(s0, start, s1)
+        fsa.add_arc(s1, end, s3)
+        fsa.add_arc(s2, end, s3)
 
-        for token in token_to_key.keys():
+        for token, key in token_to_key.items():
             if util.is_stack_token(token) or token in [START_SYMBOL, END_SYMBOL]:
                 continue
 
             # Loop around s1 with any token but an open paren
             if not util.is_token_open_paren(token):
-                fsa.add_arc(s1, token, s1)
+                fsa.add_arc(s1, key, s1)
 
             if util.is_token_open_paren(token):
                 # Go from s1 to s2 if there's an open paren
-                fsa.add_arc(s1, token, s2)
+                fsa.add_arc(s1, key, s2)
 
                 # Loop on s2 if there's an open paren
-                fsa.add_arc(s2, token, s2)
+                fsa.add_arc(s2, key, s2)
 
             # Go back from s2 to s1 on anything but a close paren or open paren
             if not util.is_token_close_paren(token) and not util.is_token_open_paren(token):
-                fsa.add_arc(s2, token, s1)
+                fsa.add_arc(s2, key, s1)
 
         # Finalize
         return fsa.compile()

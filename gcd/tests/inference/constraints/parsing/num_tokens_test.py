@@ -10,14 +10,14 @@ class TestNumTokensConstraint(unittest.TestCase):
         num_tokens = 3
         input_tokens = torch.zeros(1, num_tokens + 2)
 
-        start, end = START_SYMBOL, END_SYMBOL
-        nt, xx, close = '(NT', 'XX', ')'
+        start, end = 1, 2
+        nt, xx, close = 3, 4, 5
         token_to_key = {
-            START_SYMBOL: 1,
-            END_SYMBOL: 2,
-            '(NT': 3,
-            'XX': 4,
-            ')': 5
+            START_SYMBOL: start,
+            END_SYMBOL: end,
+            '(NT': nt,
+            'XX': xx,
+            ')': close
         }
         automaton = NumTokensConstraint().build(input_tokens, token_to_key)
 
