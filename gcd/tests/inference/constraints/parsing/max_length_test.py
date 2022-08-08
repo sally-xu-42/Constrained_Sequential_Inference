@@ -6,14 +6,14 @@ from gcd.inference.constraints.parsing import MaxLengthConstraint
 
 class TestMaxLengthConstraint(unittest.TestCase):
     def test_max_length_constraint(self):
-        start, end = START_SYMBOL, END_SYMBOL
-        nt, xx, close = '(NT', 'XX', ')'
+        start, end = 1, 2
+        nt, xx, close = 3, 4, 5
         token_to_key = {
-            START_SYMBOL: 1,
-            END_SYMBOL: 2,
-            '(NT': 3,
-            'XX': 4,
-            ')': 5
+            START_SYMBOL: start,
+            END_SYMBOL: end,
+            '(NT': nt,
+            'XX': xx,
+            ')': close
         }
         automaton = MaxLengthConstraint(5).build(None, token_to_key)
 
@@ -24,6 +24,3 @@ class TestMaxLengthConstraint(unittest.TestCase):
 
         assert not automaton.accept([start, nt, close, nt, close, close, nt, end])
         assert not automaton.accept([start, nt, xx, nt, xx, close, close, xx, end])
-
-
-TestMaxLengthConstraint().test_max_length_constraint()

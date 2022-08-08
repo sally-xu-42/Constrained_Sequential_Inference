@@ -29,13 +29,14 @@ class NumTokensConstraint(Constraint):
         fsa.set_F(states[-1])
 
         # Set the transitions from and to the start and final
-        fsa.add_arc(states[0], START_SYMBOL, states[1])
-        fsa.add_arc(states[-2], END_SYMBOL, states[-1])
+        start, end = token_to_key[START_SYMBOL], token_to_key[END_SYMBOL]
+        fsa.add_arc(states[0], start, states[1])
+        fsa.add_arc(states[-2], end, states[-1])
 
         # For the middle states, set the self loop for any symbol
         # except for a preterminal, start, end, open, or close.
         for state in states[1:-1]:
-            for token in token_to_key.keys():
+            for token, key in token_to_key.items():
                 if util.is_stack_token(token) or token in [START_SYMBOL, END_SYMBOL]:
                     continue
 
@@ -43,13 +44,13 @@ class NumTokensConstraint(Constraint):
                 if util.is_token_preterminal(token):
                     continue
                     
-                fsa.add_arc(state, token, state)
+                fsa.add_arc(state, key, state)
 
         # Add a transition between the intermediate states using a preterminal
         for state1, state2 in zip(states[1:-2], states[2:-1]):
-            for token in token_to_key.keys():
+            for token, key in token_to_key.items():
                 if util.is_token_preterminal(token):
-                    fsa.add_arc(state1, token, state2)
+                    fsa.add_arc(state1, key, state2)
 
         # Finalize
         return fsa.compile()

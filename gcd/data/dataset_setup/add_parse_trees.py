@@ -7,12 +7,22 @@ import os
 import sys
 import logging
 
-from gcd.metrics.srl import load_srl_data
-
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.DEBUG)
 import argparse
 import benepar
 import tqdm
+
+
+def _load_srl_data(filename, field=None):
+    dataset = []
+    with open(filename, 'r') as f:
+        for line in f:
+            data = json.loads(line)
+            if field is not None:
+                dataset.append(data[field])
+            else:
+                dataset.append(data)
+    return dataset
 
 
 def _save_data(data, json_file):
@@ -43,7 +53,7 @@ def prune_multiple_spaces(mystring: str):
 
 def add_parse_to_instances(json_file):
     parser = benepar.Parser("benepar_en2")
-    data = load_srl_data(json_file)
+    data = _load_srl_data(json_file)
     for idx, inst in tqdm.tqdm(enumerate(data)):
         sentence = inst["words"]
         # print(idx)
