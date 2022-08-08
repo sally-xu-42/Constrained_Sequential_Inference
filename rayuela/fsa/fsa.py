@@ -8,15 +8,14 @@ from collections import Counter
 from collections import defaultdict as dd
 
 from rayuela.base.semiring import Boolean, Real, Semiring, String, ProductSemiring
-from rayuela.base.misc import epsilon_filter
-from rayuela.base.symbol import Sym, ε, ε_1, ε_2
+from rayuela.base.automaton import Automaton
+from rayuela.base.symbol import Sym, ε
 
-from rayuela.fsa.state import State, PairState, PowerState, MinimizeState
 from rayuela.fsa.dfsa import DFSA
+from rayuela.fsa.state import State, PowerState, MinimizeState
 from rayuela.fsa.pathsum import Pathsum, Strategy
-from rayuela.fsa.transformer import Transformer
 
-class FSA:
+class FSA(Automaton):
 
 	def __init__(self, R=Boolean):
 
@@ -137,6 +136,9 @@ class FSA:
 		fsa.add_F(State(len(tokens)), self.R.one)
 
 		return bool(self.intersect(fsa).pathsum().score)
+	
+	def get_valid_actions(self, state: int, stack: int) -> list:
+		return [a for a, j, w in self.arcs(state)]
 
 	@property
 	def num_states(self):
@@ -168,6 +170,7 @@ class FSA:
 
 	def determinize(self) -> FSA:
 		# Homework 4: Question 4
+		from rayuela.fsa.transformer import Transformer
 		det = self.spawn()
 		QI = PowerState(dict(self.I))
 		det.set_I(QI)
@@ -241,7 +244,7 @@ class FSA:
 			mfsa.add_F(MinimizeState(μ[q]), w)
 		return mfsa
 
-	def compile(self) -> DFSA:
+	def compile(self):
 		fsa = self.determinize().minimize()
 		return DFSA(fsa)
 
@@ -375,57 +378,12 @@ class FSA:
 		# Homework 2: Question 3
 		raise NotImplementedError
 
-	def intersect(self, fsa):
+	def intersect(self, fsa: Automaton) -> Automaton:
 		"""
 		on-the-fly weighted intersection
 		"""
-
-		# the two machines need to be in the same semiring
-		assert self.R == fsa.R
-
-		# add initial states
-		product_fsa = FSA(R=self.R)
-		for (q1, w1), (q2, w2) in product(self.I, fsa.I):
-			product_fsa.add_I(PairState(q1, q2), w=w1 * w2)
-		
-		self_initials = {q: w for q, w in self.I}
-		fsa_initials = {q: w for q, w in fsa.I}
-
-		visited = set([(i1, i2, State('0')) for i1, i2 in product(self_initials, fsa_initials)])
-		stack = [(i1, i2, State('0')) for i1, i2 in product(self_initials, fsa_initials)]
-
-		self_finals = {q: w for q, w in self.F}
-		fsa_finals = {q: w for q, w in fsa.F}
-
-		while stack:
-			q1, q2, qf = stack.pop()
-
-			E1 = [(a if a != ε else ε_2, j, w) for (a, j, w) in self.arcs(q1)] + \
-                            [(ε_1, q1, self.R.one)]
-			E2 = [(a if a != ε else ε_1, j, w) for (a, j, w) in fsa.arcs(q2)] + \
-                            [(ε_2, q2, self.R.one)]
-
-			M = [((a1, j1, w1), (a2, j2, w2))
-				 for (a1, j1, w1), (a2, j2, w2) in product(E1, E2)
-				 if epsilon_filter(a1, a2, qf) != State('⊥')]
-
-			for (a1, j1, w1), (a2, j2, w2) in M:
-
-				product_fsa.set_arc(
-					PairState(q1, q2), a1,
-					PairState(j1, j2), w=w1*w2)
-
-				_qf = epsilon_filter(a1, a2, qf)
-				if (j1, j2, _qf) not in visited:
-					stack.append((j1, j2, _qf))
-					visited.add((j1, j2, _qf))
-
-			# final state handling
-			if q1 in self_finals and q2 in fsa_finals:
-				product_fsa.add_F(
-					PairState(q1, q2), w=self_finals[q1] * fsa_finals[q2])
-
-		return product_fsa
+		from rayuela.fsa.transformer import Transformer
+		return Transformer.intersect(self, fsa)
 
 	def equivalent(self, fsa) -> bool:
 		""" Tests equivalence. """

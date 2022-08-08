@@ -2,7 +2,7 @@ import torch
 from allennlp.common import Registrable
 from typing import Dict
 
-from rayuela.fsa.fsa import FSA
+from rayuela.base.automaton import Automaton
 
 
 class Constraint(Registrable):
@@ -10,7 +10,7 @@ class Constraint(Registrable):
               input_tokens: torch.Tensor,
               token_to_key: Dict[str, int],
               *args,
-              **kwargs) -> FSA:
+              **kwargs) -> Automaton:
         """
         Build the automaton which represents this constraint.
 

@@ -2,7 +2,8 @@ import torch
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from typing import Dict
 
-from rayuela.fsa.fsa import FSA, DFSA, State
+from rayuela.base.automaton import Automaton
+from rayuela.fsa.fsa import FSA, State
 from gcd.inference.constraints import Constraint
 from gcd.inference.constraints.parsing import util
 
@@ -14,7 +15,7 @@ class NonEmptyPhraseConstraint(Constraint):
 
     def build(self,
               input_tokens: torch.Tensor,
-              token_to_key: Dict[str, int], *args, **kwargs) -> DFSA:
+              token_to_key: Dict[str, int], *args, **kwargs) -> Automaton:
         fsa = FSA()
 
         # To write this automaton, we will first write an automaton

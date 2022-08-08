@@ -1,15 +1,18 @@
+from rayuela.base.automaton import Automaton
 from rayuela.base.semiring import Boolean, Semiring
 from rayuela.base.symbol import Sym
 from rayuela.fsa.state import State
 from collections import defaultdict as dd
-from copy import copy
+from typing import Tuple
 
 
 # Deterministic FSA
-class DFSA:
+class DFSA(Automaton):
     # Construct from fsa
     def __init__(self, fsa):
-        assert(fsa.deterministic)
+        from rayuela.fsa.fsa import FSA
+        assert(isinstance(fsa, FSA) and fsa.deterministic)
+        self.fsa = fsa  # save it for intersection
         self.R: Semiring = fsa.R
 
         state_map = {q: State(i) for i, q in enumerate(fsa.Q)}
@@ -44,3 +47,13 @@ class DFSA:
                 return True
 
         return False
+
+    def intersect(self, other: Automaton) -> Automaton:
+        pass
+
+    def get_valid_actions(self, state: int, stack: int) -> list:
+        raise NotImplemented
+    
+    def step(self, state: int, stack: int, action) -> Tuple[int, int]:  # returns to state, to stack
+        raise NotImplemented
+
