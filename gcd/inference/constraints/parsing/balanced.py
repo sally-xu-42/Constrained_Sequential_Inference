@@ -2,12 +2,14 @@ import torch
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from typing import Dict
 
-from gcd.inference.automata import PDA
+# from gcd.inference.automata import PDA
+from rayuela.fsa.pda import PDA
+from rayuela.fsa.state import State
 from gcd.inference.constraints import Constraint
 from gcd.inference.constraints.parsing import util
 from gcd.inference.constraints.parsing.util import \
     CLOSE_PAREN_SYMBOL, OPEN_PAREN_SYMBOL, \
-    EMPTY_STACK_OPEN_SYMBOL, EMPTY_STACK_CLOSE_SYMBOL
+    EMPTY_STACK_OPEN_SYMBOL, EMPTY_STACK_CLOSE_SYMBOL, is_token_open_paren
 
 
 @Constraint.register('balanced-parens')
@@ -20,71 +22,50 @@ class BalancedParenthesesConstraint(Constraint):
               input_tokens: torch.Tensor,
               token_to_key: Dict[str, int], *args, **kwargs) -> PDA:
         pda = PDA()
-        symbol_table = util.set_symbol_table(pda, token_to_key)
-        start_key = symbol_table[START_SYMBOL]
-        end_key = symbol_table[END_SYMBOL]
-        open_key = symbol_table[OPEN_PAREN_SYMBOL]
-        close_key = symbol_table[CLOSE_PAREN_SYMBOL]
-        empty_open_key = symbol_table[EMPTY_STACK_OPEN_SYMBOL]
-        empty_close_key = symbol_table[EMPTY_STACK_CLOSE_SYMBOL]
 
-        s0 = pda.add_state()
-        s1 = pda.add_state()
-        s2 = pda.add_state()
-        s3 = pda.add_state()
-        s4 = pda.add_state()
-        s5 = pda.add_state()
-        s6 = pda.add_state()
-        s7 = pda.add_state()
-        s8 = pda.add_state()
+        # start_key = symbol_table[START_SYMBOL]
+        # end_key = symbol_table[END_SYMBOL]
+        # open_key = symbol_table[OPEN_PAREN_SYMBOL]
+        # close_key = symbol_table[CLOSE_PAREN_SYMBOL]
+        # empty_open_key = symbol_table[EMPTY_STACK_OPEN_SYMBOL]
+        # empty_close_key = symbol_table[EMPTY_STACK_CLOSE_SYMBOL]
+
+        states = [State(i) for i in range(5)]
+        pda.get_Fsa().add_states(states)
 
         # Set the start and final states
-        pda.set_start(s0)
-        pda.set_final(s8)
+        pda.get_Fsa().set_I(states[0])
+        pda.get_Fsa().set_F(states[-1])
 
         # Add the start transition and empty stack push
-        pda.add_arc(s0, s1, start_key)
-        pda.add_arc(s1, s2, empty_open_key)
-
-        # Get the first opening phrase
-        for token, key in symbol_table.items():
+        pda.get_Fsa().add_arc(State(0), START_SYMBOL, State(1))
+        for token in token_to_key.keys():
             if util.is_token_open_paren(token):
-                pda.add_arc(s2, s3, key)
-
-        # Push open paren as many times as needed
-        for token, key in symbol_table.items():
-            if util.is_token_open_paren(token):
-                pda.add_arc(s3, s4, key)
-        pda.add_arc(s4, s3, open_key)
-
-        # Pop as many times as necessary
-        for token, key in symbol_table.items():
-            if util.is_token_close_paren(token):
-                pda.add_arc(s5, s3, key)
-        pda.add_arc(s3, s5, close_key)
+                pda.get_Fsa().add_arc(State(1), token, State(2))
 
         # Emit any preterminal any number of times
-        for token, key in symbol_table.items():
-            if util.is_token_preterminal(token):
-                pda.add_arc(s3, s3, key)
+        for token in token_to_key.keys():
+            if util.is_stack_token(token) or token in [START_SYMBOL, END_SYMBOL]:
+                continue
+            pda.get_Fsa().add_arc(State(2), token, State(2))
 
-        # Get the last closing phrase
-        pda.add_arc(s3, s6, empty_close_key)
-        for token, key in symbol_table.items():
+        for token in token_to_key.keys():
             if util.is_token_close_paren(token):
-                pda.add_arc(s6, s7, key)
+                pda.get_Fsa().add_arc(State(2), token, State(3))
 
-        # Add the empty stack pop and end token
-        pda.add_arc(s7, s8, end_key)
+        # pda.get_Fsa().add_arc(State(2), CLOSE_PAREN_SYMBOL, State(3))
+        # Get the last closing phrase
+        # pda.get_Fsa().add_arc(State(3), EMPTY_STACK_CLOSE_SYMBOL, State(6))
+        pda.get_Fsa().add_arc(State(3), END_SYMBOL, State(4))
 
         # Finalize
-        pda.compile()
+        # pda.compile()
 
         # For now, we don't allow PDAs with unbounded stacks, so we have
         # to intersect this constraint with a maximum length constraint. This does
         # not change the expressibility of the model
-        max_length_constraint = self.max_length_constraint.build(input_tokens, token_to_key)
-        pda = pda.intersect(max_length_constraint)
+        # max_length_constraint = self.max_length_constraint.build(input_tokens, token_to_key)
+        # pda = pda.intersect(max_length_constraint)
         return pda
 
     def get_name(self) -> str:
