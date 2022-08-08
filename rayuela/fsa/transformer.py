@@ -128,7 +128,7 @@ class Transformer:
         product_fsa = FSA(R=f1.R)
         for (q1, w1), (q2, w2) in product(f1.I, f2.I):
             product_fsa.add_I(PairState(q1, q2), w=w1 * w2)
-
+        
         self_initials = {q: w for q, w in f1.I}
         fsa_initials = {q: w for q, w in f2.I}
 
@@ -150,21 +150,18 @@ class Transformer:
                     for (a1, j1, w1), (a2, j2, w2) in product(E1, E2)
                     if epsilon_filter(a1, a2, qf) != State('⊥')]
 
-            for (f1, j1, w1), (f2, j2, w2) in M:
+            for (a1, j1, w1), (a2, j2, w2) in M:
 
-                product_fsa.set_arc(
-                    PairState(q1, q2), f1,
-                    PairState(j1, j2), w=w1*w2)
+                product_fsa.set_arc(PairState(q1, q2), a1, PairState(j1, j2), w=w1*w2)
 
-                _qf = epsilon_filter(f1, f2, qf)
+                _qf = epsilon_filter(a1, a2, qf)
                 if (j1, j2, _qf) not in visited:
                     stack.append((j1, j2, _qf))
                     visited.add((j1, j2, _qf))
 
             # final state handling
             if q1 in self_finals and q2 in fsa_finals:
-                product_fsa.add_F(
-                    PairState(q1, q2), w=self_finals[q1] * fsa_finals[q2])
+                product_fsa.add_F(PairState(q1, q2), w=self_finals[q1] * fsa_finals[q2])
 
         return product_fsa
     

@@ -137,8 +137,13 @@ class FSA(Automaton):
 
 		return bool(self.intersect(fsa).pathsum().score)
 	
+	def get_start(self) -> int:
+		starts = [q for q, w in self.I]
+		assert(len(starts) == 1)
+		return starts[0]
+	
 	def get_valid_actions(self, state: int, stack: int) -> list:
-		return [a for a, j, w in self.arcs(state)]
+		return [a.sym for a, j, w in self.arcs(state)]
 
 	@property
 	def num_states(self):
@@ -377,13 +382,6 @@ class FSA(Automaton):
 	def coaccessible_intersection(self, fsa) -> FSA:
 		# Homework 2: Question 3
 		raise NotImplementedError
-
-	def intersect(self, fsa: Automaton) -> Automaton:
-		"""
-		on-the-fly weighted intersection
-		"""
-		from rayuela.fsa.transformer import Transformer
-		return Transformer.intersect(self, fsa)
 
 	def equivalent(self, fsa) -> bool:
 		""" Tests equivalence. """

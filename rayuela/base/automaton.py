@@ -6,6 +6,10 @@ class Automaton:
         raise NotImplemented
 
     def intersect(self, other: 'Automaton') -> 'Automaton':
+        from rayuela.fsa.transformer import Transformer
+        return Transformer.intersect(self, other)
+    
+    def get_start(self) -> int:
         raise NotImplemented
 
     def get_valid_actions(self, state: int, stack: int) -> list:

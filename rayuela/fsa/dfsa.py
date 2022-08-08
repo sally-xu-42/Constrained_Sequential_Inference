@@ -1,7 +1,5 @@
 from rayuela.base.automaton import Automaton
 from rayuela.base.semiring import Boolean, Semiring
-from rayuela.base.symbol import Sym
-from rayuela.fsa.state import State
 from collections import defaultdict as dd
 from typing import Tuple
 
@@ -15,7 +13,7 @@ class DFSA(Automaton):
         self.fsa = fsa  # save it for intersection
         self.R: Semiring = fsa.R
 
-        state_map = {q: State(i) for i, q in enumerate(fsa.Q)}
+        state_map = {q: i for i, q in enumerate(fsa.Q)}  # from fsa state to dfsa
 
         self.Q: set = set(state_map.values())
 
@@ -28,15 +26,13 @@ class DFSA(Automaton):
         # Build deterministic transition arcs
         for i in fsa.Q:
             for a, j, w in fsa.arcs(i):
-                self.delta[state_map[i]][a] = (state_map[j], w)
+                self.delta[state_map[i]][a.sym] = (state_map[j], w)
 
     def accept(self, tokens) -> bool:
         """ determines whether a string is in the language """
         assert isinstance(tokens, list)
         for cur in self.initial_states:
             for a in tokens:
-                if not isinstance(a, Sym):
-                    a = Sym(a)
                 nxt, w = self.delta[cur][a]
                 if nxt is not None:
                     cur = nxt
@@ -47,13 +43,15 @@ class DFSA(Automaton):
                 return True
 
         return False
-
-    def intersect(self, other: Automaton) -> Automaton:
-        pass
+    
+    def get_start(self) -> int:
+        assert(len(self.initial_states) == 1)
+        return self.initial_states[0]
 
     def get_valid_actions(self, state: int, stack: int) -> list:
-        raise NotImplemented
+        return list(self.delta[state].keys())
     
     def step(self, state: int, stack: int, action) -> Tuple[int, int]:  # returns to state, to stack
-        raise NotImplemented
-
+        nxt, w = self.delta[state][action]
+        assert nxt is not None
+        return nxt, stack

@@ -1,7 +1,8 @@
 import unittest
 from allennlp.common.util import END_SYMBOL, START_SYMBOL
 
-from gcd.inference.automata import FSA, PDA, util
+from rayuela.fsa.fsa import FSA
+from gcd.inference.automata import PDA, util
 from gcd.inference.constraints.parsing.common import \
     OPEN_PAREN_SYMBOL, CLOSE_PAREN_SYMBOL, \
     EMPTY_STACK_OPEN_SYMBOL, EMPTY_STACK_CLOSE_SYMBOL
@@ -12,47 +13,37 @@ class TestUtil(unittest.TestCase):
         # Build an FSA that accepts "123" and "124" and another that
         # only accepts "123"
         a1, a2, a3, a4, a5 = 1, 2, 3, 4, 5
+        states = list(range(4))
+        s0, s1, s2, s3 = states
 
         fsa1 = FSA()
-        s0 = fsa1.add_state()
-        s1 = fsa1.add_state()
-        s2 = fsa1.add_state()
-        s3 = fsa1.add_state()
-        fsa1.add_symbol('1', a1)
-        fsa1.add_symbol('2', a2)
-        fsa1.add_symbol('3', a3)
-        fsa1.add_symbol('4', a4)
-        fsa1.add_symbol('5', a5)
-        fsa1.set_start(s0)
-        fsa1.set_final(s3)
-        fsa1.add_arc(s0, s1, a1)
-        fsa1.add_arc(s1, s2, a2)
-        fsa1.add_arc(s2, s3, a3)
-        fsa1.add_arc(s2, s3, a4)
-        fsa1.compile()
+        fsa1.add_states(states)
+        fsa1.set_I(s0)
+        fsa1.set_F(s3)
+        fsa1.add_arc(s0, a1, s1)
+        fsa1.add_arc(s1, a2, s2)
+        fsa1.add_arc(s2, a3, s3)
+        fsa1.add_arc(s2, a4, s3)
+        fsa1 = fsa1.compile()
 
         fsa2 = FSA()
-        s0 = fsa2.add_state()
-        s1 = fsa2.add_state()
-        s2 = fsa2.add_state()
-        s3 = fsa2.add_state()
-        fsa2.add_symbol('1', a1)
-        fsa2.add_symbol('2', a2)
-        fsa2.add_symbol('3', a3)
-        fsa2.add_symbol('4', a4)
-        fsa2.add_symbol('5', a5)
-        fsa2.set_start(s0)
-        fsa2.set_final(s3)
-        fsa2.add_arc(s0, s1, a1)
-        fsa2.add_arc(s1, s2, a2)
-        fsa2.add_arc(s2, s3, a3)
-        fsa2.compile()
+        fsa2.add_states(states)
+        fsa2.set_I(s0)
+        fsa2.set_F(s3)
+        fsa2.add_arc(s0, a1, s1)
+        fsa2.add_arc(s1, a2, s2)
+        fsa2.add_arc(s2, a3, s3)
+        fsa2 = fsa2.compile()
 
-        intersection = util.intersect(fsa1, fsa2)
+        intersection = fsa1.intersect(fsa2)
         # Check the language
-        language = list(intersection.get_language())
-        assert language == [' '.join(list(map(str, [a1, a2, a3])))]
+        assert intersection.accept([a1, a2, a3])
+        assert not intersection.accept([])
+        assert not intersection.accept([a1, a2])
+        assert not intersection.accept([a1, a2, a3, a1])
+        assert not intersection.accept([a2])
 
+    @unittest.skip("PDA not implemented yet")
     def test_intersect_fsa_pda(self):
         # Create a PDA that accepts "a^n b^n" and an FSA that accepts
         # inputs >= length 5

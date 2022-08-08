@@ -56,10 +56,10 @@ class PowerState(State):
 		contents = []
 		if self.residuals is None:
 			for state in self.idx:
-				contents.append(f"{state.idx}")
+				contents.append(f"{state}")
 		else:
 			for state in self.idx:
-				contents.append(f"{state.idx}/{str(self.residuals[state])}")
+				contents.append(f"{state}/{str(self.residuals[state])}")
 
 		return "{" + ", ".join(contents) + "}"
 
