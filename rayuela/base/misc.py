@@ -257,3 +257,11 @@ class colors:
     leftarrow = '←'
     rightarrow = '→'
     reset = _reset
+
+
+def is_token_open_paren(token: str) -> bool:
+    return token.startswith('(')
+
+
+def is_token_close_paren(token: str) -> bool:
+    return token.endswith(')')

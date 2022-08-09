@@ -46,7 +46,7 @@ class DFSA(Automaton):
     
     def get_start(self) -> int:
         assert(len(self.initial_states) == 1)
-        return self.initial_states[0]
+        return list(self.initial_states)[0]
 
     def get_valid_actions(self, state: int, stack: int) -> list:
         return list(self.delta[state].keys())

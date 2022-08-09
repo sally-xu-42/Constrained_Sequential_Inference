@@ -8,12 +8,9 @@ from rayuela.base.misc import epsilon_filter
 from rayuela.base.symbol import ε, ε_1, ε_2
 from rayuela.fsa.fsa import FSA
 from rayuela.fsa.dfsa import DFSA
-from rayuela.fsa.state import MinimizeState, PairState, PowerState, State
+from rayuela.fsa.pda import PDA
+from rayuela.fsa.state import PairState, PowerState, State
 from rayuela.fsa.pathsum import Pathsum, Strategy
-
-
-class PDA(Automaton):
-    ... # TODO: to be removed
 
 
 class Transformer:
@@ -165,8 +162,9 @@ class Transformer:
 
         return product_fsa
     
-    def _pda_fsa_intersect(pda, fsa):
-        raise NotImplemented
+    def _pda_fsa_intersect(pda: PDA, fsa: FSA) -> PDA:
+        return PDA(pda.token_to_key, Transformer._fsa_fsa_intersect(pda.dfsa.fsa, fsa))
     
-    def _pda_pda_intersect(p1, p2):
-        raise NotImplemented
+    def _pda_pda_intersect(p1: PDA, p2: PDA) -> PDA:
+        assert(p1.token_to_key == p2.token_to_key)
+        return PDA(p1.token_to_key, Transformer._fsa_fsa_intersect(p1.dfsa.fsa, p2.dfsa.fsa))
