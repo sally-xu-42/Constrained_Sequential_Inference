@@ -171,7 +171,7 @@ class UnconstrainedBeamSearch(ConstrainedBeamSearch):
             # shape: (batch_size, beam_size)
             backpointer = restricted_beam_indices / self.per_node_beam_size
 
-            backpointers.append(backpointer)
+            backpointers.append(backpointer.type(torch.int64))
 
             # Keep only the pieces of the state tensors corresponding to the
             # ancestors created this iteration.
@@ -180,7 +180,7 @@ class UnconstrainedBeamSearch(ConstrainedBeamSearch):
                 # shape: (batch_size, beam_size, *)
                 expanded_backpointer = backpointer.\
                         view(batch_size, self.beam_size, *([1] * len(last_dims))).\
-                        expand(batch_size, self.beam_size, *last_dims)
+                        expand(batch_size, self.beam_size, *last_dims).type(torch.int64)
 
                 # shape: (batch_size * beam_size, *)
                 state[key] = state_tensor.\
