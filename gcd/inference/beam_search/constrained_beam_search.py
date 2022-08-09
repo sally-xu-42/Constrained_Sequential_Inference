@@ -68,7 +68,12 @@ class ConstrainedBeamSearch(Registrable):
                 if action == self._end_index:
                     next_state, next_stack = state, stack
                 else:
-                    next_state, next_stack = constraint_set.step(state, stack, action)
+                    try:
+                        next_state, next_stack = constraint_set.step(state, stack, action)
+                    except ValueError as e:
+                        import dill
+                        dill.dump(constraint_set, open('bad_constraint_set.dill', 'wb'))
+                        raise e
                 next_states[batch].append(next_state)
                 next_stacks[batch].append(next_stack)
 
@@ -245,9 +250,9 @@ class ConstrainedBeamSearch(Registrable):
             # dividing by per_node_beam_size gives the ancestor. (Note that this is integer
             # division as the tensor is a LongTensor.)
             # shape: (batch_size, beam_size)
-            backpointer = restricted_beam_indices / self.per_node_beam_size
+            backpointer = (restricted_beam_indices / self.per_node_beam_size).type(torch.int64)
 
-            backpointers.append(backpointer.type(torch.int64))
+            backpointers.append(backpointer)
 
             # Keep only the pieces of the state tensors corresponding to the
             # ancestors created this iteration.

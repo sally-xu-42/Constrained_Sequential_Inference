@@ -4,6 +4,7 @@ from allennlp.data import Vocabulary
 from typing import Dict, List, Optional, Tuple
 
 from gcd.inference.constraints import Constraint
+from gcd.inference.constraints.parsing.util import hash_dict
 from rayuela.base.automaton import Automaton
 
 
@@ -26,9 +27,10 @@ class ConstraintSet(FromParams):
         self.all_indices = list(self.token_to_key.values())
 
     def setup(self, input_tokens: torch.Tensor, *args, **kwargs) -> None:
+        dhash = hash_dict(self.token_to_key)
         self.automata = []
         for constraint in self.constraints:
-            automaton = constraint.build(input_tokens, self.token_to_key, *args, **kwargs)
+            automaton = constraint.build(input_tokens, self.token_to_key, dhash, *args, **kwargs)
             self.automata.append(automaton)
         self.constraint_automaton = None
         self.working_set = set()
@@ -44,11 +46,14 @@ class ConstraintSet(FromParams):
     def get_start(self) -> int:
         if self.constraint_automaton is None:
             return None
-        return self.constraint_automaton.get_start()
+        start = self.constraint_automaton.get_start()
+        # print(f'Getting start {start}')
+        return start
 
     def step(self, state: int, stack: int, action: int) -> Tuple[int, int]:
         if self.constraint_automaton is None:
             return None, None
+        # print(f'Step with state {state}, stack {stack} and action {action}')
         return self.constraint_automaton.step(state, stack, action)
 
     def get_valid_actions(self, state: int, stack: int) -> List[int]:
@@ -72,7 +77,7 @@ class ConstraintSet(FromParams):
         return [i for i, automaton in enumerate(self.automata) if not automaton.accept(tokens)]
 
     def add_contraint_to_working_set(self, index: int) -> None:
-        # print(f'Adding {self.constraints[index].get_name()} to the working set')
+        print(f'Adding {self.constraints[index].get_name()} to the working set')
         self.working_set.add(index)
         self.non_working_set.remove(index)
         if self.constraint_automaton is None:
