@@ -9,7 +9,7 @@ class Constraint(Registrable):
     def build(self,
               input_tokens: torch.Tensor,
               token_to_key: Dict[str, int],
-              dict_hash: str,
+              dict_hash: str = None,
               *args,
               **kwargs) -> Automaton:
         """

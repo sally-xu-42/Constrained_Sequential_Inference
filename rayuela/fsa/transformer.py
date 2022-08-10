@@ -101,21 +101,21 @@ class Transformer:
             return Transformer._fsa_fsa_intersect(a1, a2)
 
         if isinstance(a1, DFSA) and isinstance(a2, DFSA):
-            return Transformer._fsa_fsa_intersect(a1.fsa, a2.fsa).compile()
+            return Transformer._dfsa_dfsa_intersect(a1, a2)
         if isinstance(a1, DFSA) and isinstance(a2, FSA):
-            return Transformer._fsa_fsa_intersect(a1.fsa, a2).compile()
+            return Transformer._dfsa_dfsa_intersect(a1, a2.compile())
         if isinstance(a1, FSA) and isinstance(a2, DFSA):
-            return Transformer._fsa_fsa_intersect(a1, a2.fsa).compile()
+            return Transformer._dfsa_dfsa_intersect(a1.compile(), a2)
 
         if isinstance(a2, PDA): a1, a2 = a2, a1
         assert(isinstance(a1, PDA)), f"Unkown automaton type {type(a1)}"
 
         if isinstance(a2, PDA):
             return Transformer._pda_pda_intersect(a1, a2)
-        if isinstance(a2, FSA):
-            return Transformer._pda_fsa_intersect(a1, a2)
-        assert(isinstance(a2, DFSA)), f"Unkown automaton type {type(a1)}"
-        return Transformer._pda_fsa_intersect(a1, a2.fsa)
+        if isinstance(a2, DFSA):
+            return Transformer._pda_dfsa_intersect(a1, a2)
+        assert(isinstance(a2, FSA)), f"Unkown automaton type {type(a2)}"
+        return Transformer._pda_dfsa_intersect(a1, a2.compile())
     
     def _fsa_fsa_intersect(f1: FSA, f2: FSA) -> FSA:
         # the two machines need to be in the same semiring
@@ -162,9 +162,48 @@ class Transformer:
 
         return product_fsa
     
-    def _pda_fsa_intersect(pda: PDA, fsa: FSA) -> PDA:
-        return PDA(pda.token_to_key, Transformer._fsa_fsa_intersect(pda.dfsa.fsa, fsa))
+    def _dfsa_dfsa_intersect(d1: DFSA, d2: DFSA) -> DFSA:
+        product_fsa = FSA()
+        product_fsa.set_I(PairState(d1.initial_state, d2.initial_state)) 
+
+        stack = [(d1.initial_state, d2.initial_state)]
+        visited = {(d1.initial_state, d2.initial_state)}
+
+        while stack:
+            i1, i2 = stack.pop()
+            def common_arcs(arcs1, arcs2):
+                # res = []
+                if len(arcs1) <= len(arcs2):
+                    for a, j1 in arcs1.items():
+                        j2 = arcs2.get(a)
+                        if j2 is not None:
+                            yield a, j1, j2
+                            # res.append((a, j1, j2))
+                else:
+                    for a, j2 in arcs2.items():
+                        j1 = arcs1.get(a)
+                        if j1 is not None:
+                            yield a, j1, j2
+                            # res.append((a, j1, j2))
+                # for b in d1.Sigma:
+                #     assert sum(1 for a, j1, j2 in res if a == b) <= 1
+                # return res
+            
+            for a, j1, j2 in common_arcs(d1.delta[i1], d2.delta[i2]):
+                product_fsa.add_arc(PairState(i1, i2), a, PairState(j1, j2))
+                if (j1, j2) not in visited:
+                    stack.append((j1, j2))
+                    visited.add((j1, j2))
+            
+            if i1 == d1.final_state and i2 == d2.final_state:
+                product_fsa.set_F(PairState(i1, i2))
+        
+        return product_fsa.compile()
+
+
+    def _pda_dfsa_intersect(pda: PDA, dfsa: DFSA) -> PDA:
+        return PDA(pda.token_to_key, Transformer._dfsa_dfsa_intersect(pda.dfsa, dfsa))
     
     def _pda_pda_intersect(p1: PDA, p2: PDA) -> PDA:
         assert(p1.token_to_key == p2.token_to_key)
-        return PDA(p1.token_to_key, Transformer._fsa_fsa_intersect(p1.dfsa.fsa, p2.dfsa.fsa))
+        return PDA(p1.token_to_key, Transformer._dfsa_dfsa_intersect(p1.dfsa, p2.dfsa))

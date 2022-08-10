@@ -36,7 +36,7 @@ class TestPDA(unittest.TestCase):
         fsa.set_I(s[0])
         fsa.set_F(s[4])
 
-        self.pda = PDA(self.token_to_key, fsa)
+        self.pda = PDA(self.token_to_key, fsa.compile())
 
     def test_accepts(self):
         bos, eos = self.bos, self.eos

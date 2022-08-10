@@ -10,17 +10,16 @@ from rayuela.fsa.state import State
 # accepts: s ( xx ( xx () ) ) e, s () e, ...
 # not accepts: s e, s () () e, s ( xx () e, ...
 class PDA(Automaton):
-    def __init__(self, token_to_key: Dict[str, int], fsa=None) -> 'PDA':
+    def __init__(self, token_to_key: Dict[str, int], dfsa=None, max_length=float('inf')) -> 'PDA':
         from rayuela.fsa.fsa import FSA
         from rayuela.fsa.dfsa import DFSA
         assert(isinstance(token_to_key, dict))
         self.token_to_key = token_to_key
         self.key_to_token = {k: t for t, k in token_to_key.items()}
-        if isinstance(fsa, FSA):
-            self.dfsa = fsa.compile()
-        elif isinstance(fsa, DFSA):
-            self.dfsa = fsa
-        elif fsa is None: # a dfsa that accepts all languages
+        self.max_length = max_length
+        if isinstance(dfsa, DFSA):
+            self.dfsa = dfsa
+        elif dfsa is None: # a dfsa that accepts all languages
             fsa = FSA()
             q = State(0)
             fsa.add_state(q)
@@ -30,7 +29,7 @@ class PDA(Automaton):
                 fsa.add_arc(q, a, q)
             self.dfsa = fsa.compile()
         else:
-            raise TypeError(f'Unknown automaton type {type(fsa)}')
+            raise TypeError(f'Unknown automaton type {type(dfsa)}')
 
     def pda_accept(tokens: list) -> bool:
         state = 0
@@ -71,6 +70,7 @@ class PDA(Automaton):
         return state == 4
 
     def accept(self, keys) -> bool:
+        if len(keys) > self.max_length: return False
         return PDA.pda_accept([self.key_to_token[k] for k in keys]) and self.dfsa.accept(keys)
     
     def get_start(self) -> int:

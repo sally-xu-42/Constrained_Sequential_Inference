@@ -15,6 +15,9 @@ from rayuela.fsa.dfsa import DFSA
 from rayuela.fsa.state import State, PowerState, MinimizeState
 from rayuela.fsa.pathsum import Pathsum, Strategy
 
+from tqdm import tqdm
+
+
 class FSA(Automaton):
 
 	def __init__(self, R=Boolean):
@@ -173,8 +176,24 @@ class FSA(Automaton):
 	def Q_map(self, powerstate):
 		return set([q for q, _ in powerstate.residuals.items()]) # extracts states
 
+	def normalize(self) -> FSA:
+		# Simplify states representations
+		print(f'Normalizing a fsa with {self.num_states} states...')
+		fsa = self.spawn()
+		sm = {q: State(i) for i, q in enumerate(self.Q)}
+		for i, w in self.I:
+			fsa.add_I(sm[i], w)
+		for i, w in self.F:
+			fsa.add_F(sm[i], w)
+		for i in self.Q:
+			for a, j, w in self.arcs(i):
+				fsa.add_arc(sm[i], a, sm[j], w)
+		return fsa
+
 	def determinize(self) -> FSA:
 		# Homework 4: Question 4
+		if self.deterministic: return self
+		print(f'Determinizing a fsa with {self.num_states} states...')
 		from rayuela.fsa.transformer import Transformer
 		det = self.spawn()
 		QI = PowerState(dict(self.I))
@@ -200,29 +219,18 @@ class FSA(Automaton):
 						det.ρ[QP] = s
 						stack.append(QP)
 
-		assert(det.deterministic)
 		return det
 
 	def minimize(self, strategy=None) -> FSA:
 		# Homework 5: Question 3
+		assert self.deterministic
+		print(f'Minimizing a fsa with {self.num_states} states...')
 		from rayuela.base.partitions import PartitionRefinement
 
-		# Assume deterministic and trim
-
-		# Step 1: Weights pushing
-		# if not self.pushed: 
-		# 	pfsa = self.push()
-		# else: 
-		# 	pfsa = self
-
-		# Step 2: treat a/w as (a, w)
-
-		# Step 3: Unweighted determinization
-		# partition refinement minimization
-		final_s = set([q for q, _ in self.F])
-		non_final_s = set(self.Q - final_s)
-		P_cal = set([frozenset(final_s), frozenset(non_final_s)])
-		for a in self.Sigma:
+		final_s = {q for q, _ in self.F}
+		non_final_s = self.Q - final_s
+		P_cal = {frozenset(final_s), frozenset(non_final_s)}
+		for a in tqdm(self.Sigma):
 			f_a = {q:q for q in self.Q}
 			Q = set([])
 			for q in self.Q:
@@ -231,6 +239,7 @@ class FSA(Automaton):
 					f_a[q] = j
 					Q.add(q)
 			P_cal = PartitionRefinement(f_a, Q).hopcroft(P_cal)
+			# print('a', a, 'f_a', f_a, 'Q', Q, 'P_cal', P_cal)
 		return self._block_fsa_construction(P_cal)
 	
 	def _block_fsa_construction(self, P_cal):
@@ -250,8 +259,11 @@ class FSA(Automaton):
 		return mfsa
 
 	def compile(self):
-		fsa = self.determinize().minimize()
-		return DFSA(fsa)
+		dfsa = DFSA(self.determinize())
+		return dfsa
+		mfsa = dfsa.minimize()  # TODO: minimization is too slow for 1k+ states
+		# mfsa = self.determinize().minimize()
+		return DFSA(mfsa.determinize())
 
 	def dfs(self):
 		""" Depth-first search (Cormen et al. 2019; Section 22.3) """

@@ -18,7 +18,8 @@ class NonEmptyPhraseConstraint(Constraint):
     def build(self,
               input_tokens: torch.Tensor,
               token_to_key: Dict[str, int],
-              dict_hash: str, *args, **kwargs) -> Automaton:
+              dict_hash: str = None, *args, **kwargs) -> Automaton:
+        if dict_hash is None: dict_hash = util.hash_dict(token_to_key)
         dfsa = self.cache.get(dict_hash)
         if dfsa is None:
             print(f'Compiling a NonEmptyPhraseConstraint with size {len(token_to_key)} vocab...')

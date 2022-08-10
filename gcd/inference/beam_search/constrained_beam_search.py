@@ -68,12 +68,7 @@ class ConstrainedBeamSearch(Registrable):
                 if action == self._end_index:
                     next_state, next_stack = state, stack
                 else:
-                    try:
-                        next_state, next_stack = constraint_set.step(state, stack, action)
-                    except ValueError as e:
-                        import dill
-                        dill.dump(constraint_set, open('bad_constraint_set.dill', 'wb'))
-                        raise e
+                    next_state, next_stack = constraint_set.step(state, stack, action)
                 next_states[batch].append(next_state)
                 next_stacks[batch].append(next_stack)
 

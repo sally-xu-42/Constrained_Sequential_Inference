@@ -18,7 +18,8 @@ class NumTokensConstraint(Constraint):
     def build(self,
               input_tokens: torch.Tensor,
               token_to_key: Dict[str, int],
-              dict_hash: str, *args, **kwargs) -> Automaton:
+              dict_hash: str = None, *args, **kwargs) -> Automaton:
+        if dict_hash is None: dict_hash = util.hash_dict(token_to_key)
         batch_size, num_tokens = input_tokens.size()
         assert batch_size == 1, batch_size
         num_tokens -= 2  # <bos>, <eos>

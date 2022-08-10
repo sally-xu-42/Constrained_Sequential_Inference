@@ -11,7 +11,7 @@ class TestUtil(unittest.TestCase):
         # Build an FSA that accepts "123" and "124" and another that
         # only accepts "123"
         a1, a2, a3, a4, a5 = 1, 2, 3, 4, 5
-        states = list(range(4))
+        states = [State(i) for i in range(4)]
         s0, s1, s2, s3 = states
 
         fsa1 = FSA()

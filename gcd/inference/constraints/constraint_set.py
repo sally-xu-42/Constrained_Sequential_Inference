@@ -59,7 +59,9 @@ class ConstraintSet(FromParams):
     def get_valid_actions(self, state: int, stack: int) -> List[int]:
         if self.constraint_automaton is None:
             return self.all_indices
-        return self.constraint_automaton.get_valid_actions(state, stack)
+        actions = self.constraint_automaton.get_valid_actions(state, stack)
+        # print(f'Get valid actions with state {state}, stack {stack} and actions {actions}')
+        return actions
 
     def get_violated_constraint(self, tokens: List[int]) -> Optional[int]:
         """Returns the index of the constraint in the non-working set which is violated."""

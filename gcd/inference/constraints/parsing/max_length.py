@@ -1,3 +1,4 @@
+from collections import defaultdict
 import torch
 from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from typing import Dict
@@ -11,17 +12,18 @@ from gcd.inference.constraints.parsing import util
 
 @Constraint.register('max-length')
 class MaxLengthConstraint(Constraint):
-    cache: Dict[str, DFSA] = {}
+    cache: Dict[str, Dict[int, Automaton]] = defaultdict(lambda: {})
     def __init__(self, max_length: int) -> None:
         self.max_length = max_length
 
     def build(self,
               input_tokens: torch.Tensor,
               token_to_key: Dict[str, int],
-              dict_hash: str, *args, **kwargs) -> Automaton:
-        dfsa = self.cache.get(dict_hash)
+              dict_hash: str = None, *args, **kwargs) -> Automaton:
+        if dict_hash is None: dict_hash = util.hash_dict(token_to_key)
+        dfsa = self.cache[self.max_length].get(dict_hash)
         if dfsa is None:
-            print(f'Compiling a MaxLengthConstraint with size {len(token_to_key)} vocab...')
+            print(f'Compiling a MaxLengthConstraint with max_length {self.max_length} and size {len(token_to_key)} vocab ...')
             fsa = FSA()
 
             states = [State(i) for i in range(self.max_length + 3)]
@@ -48,7 +50,7 @@ class MaxLengthConstraint(Constraint):
 
             # Finalize
             dfsa = fsa.compile()
-            self.cache[dict_hash] = dfsa
+            self.cache[self.max_length][dict_hash] = dfsa
         
         return dfsa
 

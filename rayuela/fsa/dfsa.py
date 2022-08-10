@@ -3,56 +3,75 @@ from rayuela.base.semiring import Boolean, Semiring
 from collections import defaultdict as dd
 from typing import Tuple
 
+from rayuela.fsa.state import MinimizeState, State
+from tqdm import tqdm
+
 
 # Deterministic FSA
 class DFSA(Automaton):
     # Construct from fsa
     def __init__(self, fsa):
+        # if fsa is None:
+        #     self.Q = {}
+        #     self.initial_state = self.final_state = None
+        #     self.delta = dd(lambda: {})
+        #     self.Sigma = {}
+        #     return
+        
         from rayuela.fsa.fsa import FSA
-        assert(isinstance(fsa, FSA) and fsa.deterministic)
-        self.fsa = fsa  # save it for intersection
-        self.R: Semiring = fsa.R
+        assert isinstance(fsa, FSA)
+        assert fsa.deterministic
+        assert fsa.R is Boolean
+        # self.fsa = fsa  # save it for intersection
 
         state_map = {q: i for i, q in enumerate(fsa.Q)}  # from fsa state to dfsa
 
         self.Q: set = set(state_map.values())
 
-        self.initial_states = set(state_map[q] for q in fsa.Q if fsa.λ[q] != self.R.zero)
-        self.final_states = set(state_map[q] for q in fsa.Q if fsa.ρ[q] != self.R.zero)
+        self.initial_state = [state_map[q] for q in fsa.Q if fsa.λ[q].score]
+        assert len(self.initial_state) == 1
+        self.initial_state = self.initial_state[0]
 
-        # delta[i][a] = (j, w)
-        self.delta = dd(lambda: dd(lambda: (None, self.R.zero)))
+        self.final_state = [state_map[q] for q in fsa.Q if fsa.ρ[q].score]
+        assert len(self.final_state) == 1
+        self.final_state = self.final_state[0]
+
+        # delta[i][a] = j
+        self.delta = dd(lambda: {})
+
+        self.Sigma = {a.sym for a in fsa.Sigma}
 
         # Build deterministic transition arcs
         for i in fsa.Q:
             for a, j, w in fsa.arcs(i):
-                self.delta[state_map[i]][a.sym] = (state_map[j], w)
+                if w.score:
+                    self.delta[state_map[i]][a.sym] = state_map[j]
 
     def accept(self, tokens) -> bool:
         """ determines whether a string is in the language """
         assert isinstance(tokens, list)
-        for cur in self.initial_states:
-            for a in tokens:
-                nxt, w = self.delta[cur][a]
-                if nxt is not None:
-                    cur = nxt
-                else:  # no arc
-                    return False
+        cur = self.initial_state
+        for a in tokens:
+            nxt = self.delta[cur].get(a)
+            if nxt is not None:
+                cur = nxt
+            else:  # no arc
+                return False
 
-            if cur in self.final_states:
-                return True
-
-        return False
+        return cur == self.final_state
     
     def get_start(self) -> int:
-        assert(len(self.initial_states) == 1)
-        return list(self.initial_states)[0]
+        # print(f'FSA getting start {self.initial_state}')
+        return self.initial_state
 
     def get_valid_actions(self, state: int, stack: int) -> list:
-        return list(a for a, (j, w) in self.delta[state].items() if j is not None)
+        actions = list(self.delta[state])
+        # print(f'FSA get valid actions with state {state}, stack {stack} and actions {actions}')
+        return actions
     
     def step(self, state: int, stack: int, action) -> Tuple[int, int]:  # returns to state, to stack
-        nxt, w = self.delta[state][action]
+        # print(f'FSA step with state {state}, stack {stack} and action {action}')
+        nxt = self.delta[state].get(action)
         if nxt is None:
             import dill
             dill.dump(self, open('bad_dfsa.dill', 'wb'))
@@ -62,6 +81,43 @@ class DFSA(Automaton):
     @property
     def num_states(self):
         return len(self.Q)
+
+    def minimize(self):
+        # Homework 5: Question 3
+        print(f'Minimizing a fsa with {self.num_states} states...')
+        from rayuela.base.partitions import PartitionRefinement
+
+        # Assume deterministic and trim
+        final_s = frozenset([self.final_state])
+        non_final_s = frozenset(self.Q - final_s)
+        P_cal = {final_s, non_final_s}
+        for a in tqdm(self.Sigma):
+            f_a = {}
+            Q = set()
+            for q in self.Q:
+                p = self.delta[q].get(a)
+                if p is not None:
+                    f_a[q] = p
+                    Q.add(q)
+                else:
+                    f_a[q] = q
+            P_cal = PartitionRefinement(f_a, Q).hopcroft(P_cal)
+        
+        return self._block_fsa_construction(P_cal)
+
+    def _block_fsa_construction(self, P_cal):
+        # block fsa construction
+        from rayuela.fsa.fsa import FSA
+        mfsa = FSA()
+        μ = {q: State(i) for i, Q in enumerate(P_cal) for q in Q}
+        for i in self.Q:
+            for a, j in self.delta[i].items():
+                MinimizeState
+                mfsa.add_arc(μ[i], a, μ[j])
+
+        mfsa.set_I(μ[self.initial_state])
+        mfsa.set_F(μ[self.final_state])
+        return mfsa
 
     def _repr_html_(self):
         """
@@ -79,8 +135,8 @@ class DFSA(Automaton):
             return f'FST too large to draw graphic, use fst.ascii_visualize()<br /><code>FST(num_states={self.num_states})</code>'
 
         # print initial
-        for q in self.initial_states:
-            if q in self.final_states:
+        for q in [self.initial_state]:
+            if q == self.final_state:
                 label = f'{q}'
                 color = 'af8dc3'
             else:
@@ -94,9 +150,9 @@ class DFSA(Automaton):
             ret.append(f'g.node("{q}").style = "fill: #{color}"; \n')
 
         # print normal
-        for q in (self.Q - self.final_states) - self.initial_states:
+        for q in self.Q - {self.initial_state, self.final_state}:
 
-            label = q
+            label = f'{q}'
 
             ret.append(
                 f'g.setNode("{q}", {{ label: {json.dumps(label)} , shape: "circle" }});\n')
@@ -104,9 +160,9 @@ class DFSA(Automaton):
             ret.append(f'g.node("{q}").style = "fill: #8da0cb"; \n')
 
         # print final
-        for q in self.final_states:
+        for q in [self.final_state]:
             # already added
-            if q in self.initial_states:
+            if q == self.initial_state:
                 continue
 
             label = f'{q}'
@@ -118,7 +174,7 @@ class DFSA(Automaton):
 
         for q in self.Q:
             to = defaultdict(list)
-            for a, (j, w) in self.delta[q].items():
+            for a, j in self.delta[q].items():
                 label = f'{a}'
                 to[j].append(label)
 
