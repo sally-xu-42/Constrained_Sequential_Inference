@@ -120,7 +120,11 @@ class PDA(Automaton):
                 pda_to_state = 2
                 to_stack = stack
         else:  # pda_state == 3
-            assert(action == END_SYMBOL)
+            if action != END_SYMBOL:
+                print("PDA step stuck")
+                # import dill
+                # dill.dump(self, open('bad_pda.dill', 'wb'))
+                # raise ValueError(f'Bad dfsa step with state {state}, stack {stack} and action {action}')
             pda_to_state = 4
             to_stack = 0
         return PDA.encode_state(fsa_to_state, pda_to_state), to_stack

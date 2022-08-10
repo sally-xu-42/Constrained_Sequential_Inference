@@ -221,43 +221,6 @@ class FSA(Automaton):
 
 		return det
 
-	def minimize(self, strategy=None) -> FSA:
-		# Homework 5: Question 3
-		assert self.deterministic
-		print(f'Minimizing a fsa with {self.num_states} states...')
-		from rayuela.base.partitions import PartitionRefinement
-
-		final_s = {q for q, _ in self.F}
-		non_final_s = self.Q - final_s
-		P_cal = {frozenset(final_s), frozenset(non_final_s)}
-		for a in tqdm(self.Sigma):
-			f_a = {q:q for q in self.Q}
-			Q = set([])
-			for q in self.Q:
-				for b, j, w in self.arcs(q):
-					if b != a: continue
-					f_a[q] = j
-					Q.add(q)
-			P_cal = PartitionRefinement(f_a, Q).hopcroft(P_cal)
-			# print('a', a, 'f_a', f_a, 'Q', Q, 'P_cal', P_cal)
-		return self._block_fsa_construction(P_cal)
-	
-	def _block_fsa_construction(self, P_cal):
-		# block fsa construction
-		mfsa = self.spawn()
-		μ = {}
-		for Q_cal in P_cal:
-			for q in Q_cal:
-				μ[q] = Q_cal
-		for q in self.Q:
-			for a, j, w in self.arcs(q):
-				mfsa.add_arc(MinimizeState(μ[q]), a, MinimizeState(μ[j]), w)
-		for q, w in self.I:
-			mfsa.add_I(MinimizeState(μ[q]), w)
-		for q, w in self.F:
-			mfsa.add_F(MinimizeState(μ[q]), w)
-		return mfsa
-
 	def compile(self):
 		dfsa = DFSA(self.determinize())
 		return dfsa

@@ -163,6 +163,7 @@ class Transformer:
         return product_fsa
     
     def _dfsa_dfsa_intersect(d1: DFSA, d2: DFSA) -> DFSA:
+        print(f"Intersecting a DFSA with {d1.num_states} and a DFSA with {d2.num_states} ...")
         product_fsa = FSA()
         product_fsa.set_I(PairState(d1.initial_state, d2.initial_state)) 
 

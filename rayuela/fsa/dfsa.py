@@ -73,9 +73,11 @@ class DFSA(Automaton):
         # print(f'FSA step with state {state}, stack {stack} and action {action}')
         nxt = self.delta[state].get(action)
         if nxt is None:
-            import dill
-            dill.dump(self, open('bad_dfsa.dill', 'wb'))
-            raise ValueError(f'Bad dfsa step with state {state}, stack {stack} and action {action}')
+            nxt = state
+            print("DFSA step stuck")
+        #     import dill
+        #     dill.dump(self, open('bad_dfsa.dill', 'wb'))
+        #     raise ValueError(f'Bad dfsa step with state {state}, stack {stack} and action {action}')
         return nxt, stack
 
     @property
@@ -112,7 +114,6 @@ class DFSA(Automaton):
         μ = {q: State(i) for i, Q in enumerate(P_cal) for q in Q}
         for i in self.Q:
             for a, j in self.delta[i].items():
-                MinimizeState
                 mfsa.add_arc(μ[i], a, μ[j])
 
         mfsa.set_I(μ[self.initial_state])

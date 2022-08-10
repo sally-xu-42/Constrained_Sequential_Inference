@@ -44,7 +44,7 @@ class ConstrainedBeamSearch(Registrable):
                 stack = stacks[batch][beam]
                 valid_actions = set(constraint_set.get_valid_actions(state, stack))
 
-                for action in all_actions - valid_actions:
+                for action in all_actions - valid_actions:  # ! maybe all actions are invalid
                     log_probs[batch, beam, action] = float('-inf')
 
     def _update_states_and_stacks(self,
@@ -183,6 +183,7 @@ class ConstrainedBeamSearch(Registrable):
 
             class_log_probabilities = class_log_probabilities.view(batch_size, self.beam_size, -1)
             self._apply_constraints(constraint_sets, class_log_probabilities, constraint_states, constraint_stacks)
+            # assert not torch.isinf(class_log_probabilities).all(), f"All actions are invalid in beam search step {timestep}"
             class_log_probabilities = class_log_probabilities.view(batch_size * self.beam_size, -1)
 
 
