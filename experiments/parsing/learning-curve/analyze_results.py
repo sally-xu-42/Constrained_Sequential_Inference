@@ -19,9 +19,13 @@ def get_train_percents(result_dir: str) -> List[str]:
 
 
 def get_metrics(output_dir: str, split: str) -> Tuple[Dict[str, float], ...]:
-    unconstrained = json.load(open(os.path.join(output_dir, f'{split}.unconstrained.json')))
-    constrained = json.load(open(os.path.join(output_dir, f'{split}.constrained.json')))
-    post_hoc = json.load(open(os.path.join(output_dir, f'{split}.post-hoc.json')))
+    try:
+        unconstrained = json.load(open(os.path.join(output_dir, f'{split}.unconstrained.json')))
+        constrained = json.load(open(os.path.join(output_dir, f'{split}.constrained.json')))
+        post_hoc = json.load(open(os.path.join(output_dir, f'{split}.post-hoc.json')))
+    except Exception as e:
+        print(output_dir)
+
     return unconstrained, constrained, post_hoc
 
 

@@ -104,7 +104,7 @@ class PDA(Automaton):
             pda_to_state = 2
             to_stack = 1
         elif pda_state == 2:
-            assert(action not in [START_SYMBOL, END_SYMBOL])
+            # assert(action not in [START_SYMBOL, END_SYMBOL])
             if is_token_open_paren(action):
                 pda_to_state = 2
                 to_stack = stack + 1

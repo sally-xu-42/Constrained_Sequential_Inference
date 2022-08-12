@@ -1,8 +1,10 @@
 .pytest_cache
 *.pyc
-/data
+*.jsonl
 /lib
 .DS_Store
 ._.DS_Store
 results*
+plots*
+train_transfromer.sh
 *.dill

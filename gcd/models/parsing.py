@@ -3,8 +3,9 @@ from allennlp.common.util import START_SYMBOL, END_SYMBOL
 from allennlp.data import Vocabulary
 from allennlp.models.model import Model
 from allennlp.modules import MatrixAttention, TextFieldEmbedder, TokenEmbedder
+from allennlp.modules.seq2seq_encoders import BidirectionalLanguageModelTransformer
 from allennlp.nn import InitializerApplicator, RegularizerApplicator
-from allennlp.nn.util import get_text_field_mask, masked_softmax
+from allennlp.nn.util import get_text_field_mask, masked_softmax, get_final_encoder_states
 from overrides import overrides
 from typing import Dict, Optional, Tuple
 
@@ -19,13 +20,18 @@ class ParsingModel(Model):
                  vocab: Vocabulary,
                  token_embedder: TextFieldEmbedder,
                  nonterminal_embedder: TokenEmbedder,
-                 hidden_size: int,
                  num_layers: int,
                  attention: MatrixAttention,
                  constraint_set: ConstraintSet,
                  beam_search: ConstrainedBeamSearch,
+                 encoder_type: str = 'LSTM',
+                 hidden_size: int = 256,
                  dropout: float = 0.0,
                  lstm_dropout: float = 0.0,
+                 transformer_embedding_dim: int = 512,
+                 transformer_num_layers: int = 6,
+                 transformer_hidden_size: int = 2048,
+                 transformer_dropout: float = 0.1,
                  initializer: InitializerApplicator = InitializerApplicator(),
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
         super().__init__(vocab, regularizer)
@@ -34,12 +40,24 @@ class ParsingModel(Model):
         self._nonterminal_embedder = nonterminal_embedder
         assert hidden_size % 2 == 0, hidden_size
         self.bidirectional = True
-        self._encoder = torch.nn.LSTM(token_embedder.get_output_dim(),
-                                      hidden_size // 2,
-                                      batch_first=True,
-                                      bidirectional=self.bidirectional,
-                                      num_layers=num_layers,
-                                      dropout=lstm_dropout)
+        self.encoder_type = encoder_type
+        if self.encoder_type == 'LSTM':
+            self._encoder = torch.nn.LSTM(token_embedder.get_output_dim(),
+                                          hidden_size // 2,
+                                          batch_first=True,
+                                          bidirectional=self.bidirectional,
+                                          num_layers=num_layers,
+                                          dropout=lstm_dropout)
+        elif self.encoder_type == 'Transformer':
+            self._projection = torch.nn.Linear(token_embedder.get_output_dim(), transformer_embedding_dim)
+            self._encoder = BidirectionalLanguageModelTransformer(transformer_embedding_dim,
+                                                                    transformer_hidden_size, 
+                                                                    num_layers=transformer_num_layers,
+                                                                    input_dropout=transformer_dropout)
+            hidden_size = transformer_embedding_dim * 2
+            self.hidden_size = hidden_size
+        else:
+            raise NameError("encoder_type must be 'LSTM' or 'Transformer'")
         self._attention = attention
         self._decoder = torch.nn.LSTM(nonterminal_embedder.get_output_dim(),
                                       hidden_size,
@@ -162,20 +180,35 @@ class ParsingModel(Model):
         tokens_mask = get_text_field_mask(tokens)
         tokens_embedding = self._token_embedder(tokens)
         tokens_embedding = self.dropout(tokens_embedding)
-
+        if self.encoder_type == 'Transformer':
+            tokens_embedding = self._projection(tokens_embedding)
+            tokens_encoding = self._encoder(tokens_embedding, tokens_mask)
+            state = {
+                "tokens_mask": tokens_mask,
+                "tokens_encoding": tokens_encoding,
+            }
+            batch_size = state["tokens_mask"].size(0)
+            final_encoder_output = get_final_encoder_states(
+                state["tokens_encoding"],
+                state["tokens_mask"],
+                self._encoder.is_bidirectional())
+            state["hidden"] = final_encoder_output
+            state["memory"] = state["tokens_encoding"].new_zeros(batch_size, self.hidden_size)
+            initial_decoding_state = state
+        else:
         # Pass the input through the encoder, taking care of padding
-        packed = util.pack_sequence(tokens_embedding, tokens_mask)
-        packed_scores, packed_hidden = self._encoder(packed)
-        tokens_encoding, hidden = util.unpack_sequence(packed_scores, packed_hidden, tokens_mask)
-        hidden = self._remap_hidden(hidden)
-        hidden = (self.dropout(hidden[0]), self.dropout(hidden[1]))
+            packed = util.pack_sequence(tokens_embedding, tokens_mask)
+            packed_scores, packed_hidden = self._encoder(packed)
+            tokens_encoding, hidden = util.unpack_sequence(packed_scores, packed_hidden, tokens_mask)
+            hidden = self._remap_hidden(hidden)
+            hidden = (self.dropout(hidden[0]), self.dropout(hidden[1]))
 
-        initial_decoding_state = {
-            'tokens_encoding': tokens_encoding,
-            'tokens_mask': tokens_mask,
-            'hidden': hidden[0].squeeze(0),
-            'memory': hidden[1].squeeze(0)
-        }
+            initial_decoding_state = {
+                'tokens_encoding': tokens_encoding,
+                'tokens_mask': tokens_mask,
+                'hidden': hidden[0].squeeze(0),
+                'memory': hidden[1].squeeze(0)
+            }
 
         output_dict = {}
         if parses is not None:
