@@ -94,7 +94,7 @@ class PDA(Automaton):
         fsa_state, pda_state = PDA.decode_state(state)
         fsa_to_state, _ = self.dfsa.step(fsa_state, stack, action)
         action = self.key_to_token[action]
-        assert(pda_state <= 3)
+        # assert(pda_state <= 3)
         if pda_state == 0:
             assert(action == START_SYMBOL)
             pda_to_state = 1

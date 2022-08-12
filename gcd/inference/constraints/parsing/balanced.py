@@ -12,11 +12,8 @@ from gcd.inference.constraints import Constraint
 class BalancedParenthesesConstraint(Constraint):
     cache: Dict[str, Dict[int, PDA]] = defaultdict(lambda: {})
     def __init__(self, max_length: int) -> None:
+        # max_length = 80
         self.max_length = max_length
-        # Here we don't create the max length constraint automaton since it has too many states and leads to a
-        #   significant decrease in intersection performance. Instead, we check the max length constraint manually 
-        #   when apllying constraint 
-
         from gcd.inference.constraints.parsing import MaxLengthConstraint
         self.max_length_constraint = MaxLengthConstraint(max_length)
 
