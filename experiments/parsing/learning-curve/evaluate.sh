@@ -1,5 +1,5 @@
 expt_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-results_dir=${expt_dir}/results
+results_dir=${expt_dir}/results_transformer
 
 for percent in 0.05; do
   work_dir="${results_dir}/${percent}"

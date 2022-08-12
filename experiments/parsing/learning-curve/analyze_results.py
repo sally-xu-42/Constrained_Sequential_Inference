@@ -160,7 +160,7 @@ def plot_f1_coverage(results: List[Tuple[float, Dict[str, float]]],
 
 def main():
     root_dir = os.path.dirname(os.path.realpath(__file__))
-    results_dir = os.path.join(root_dir, 'results')
+    results_dir = os.path.join(root_dir, 'results_transformer')
     plots_dir = os.path.join(root_dir, 'plots')
     train_percents = get_train_percents(results_dir)
 
