@@ -31,6 +31,7 @@ local use_constraints = false;
       "type": "embedding",
       "embedding_dim": 20
     },
+    "encoder_type": 'LSTM',
     "hidden_size": hidden_size,
     "attention": {
       "type": "mlp",
