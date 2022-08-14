@@ -9,6 +9,11 @@ More details on how to reproduce the results can be found under `data/ptb` and `
 ## Installing Dependencies
 The Python dependencies which can be directly installed via pip are in `requirements.txt`.
 
+We recommend to use python 3.7
+
+## Testing
+We provide some unit tests under `gcd/tests`. You can run `pytest` to check if automata functionalities work as expected.
+
 ### Installation Issues
 Here is one common error and what worked for us to fix it.
 

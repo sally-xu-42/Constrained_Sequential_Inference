@@ -7,3 +7,4 @@ results*
 plots*
 train_transfromer.sh
 *.dill
+lib/EVALB/evalb
