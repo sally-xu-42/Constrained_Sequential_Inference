@@ -1,7 +1,7 @@
 local train_path = std.extVar("TRAIN_PATH");
 local valid_path = std.extVar("VALID_PATH");
 
-local transformer_embedding_dim = 512;
+local transformer_embedding_dim = 128;
 local use_constraints = false;
 
 {
@@ -33,8 +33,8 @@ local use_constraints = false;
     },
     "encoder_type": 'Transformer',
     "transformer_embedding_dim": transformer_embedding_dim,
-    "transformer_hidden_size": 2048,
-    "transformer_num_layers": 6,
+    "transformer_hidden_size": 256,
+    "transformer_num_layers": 1,
     "transformer_dropout": 0.1,
     "attention": {
       "type": "mlp",
@@ -61,7 +61,7 @@ local use_constraints = false;
   },
   "iterator": {
     "type": "basic",
-    "batch_size": 16,
+    "batch_size": 8,
   },
   "trainer": {
     "num_epochs": 15,
